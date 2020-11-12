@@ -94,6 +94,8 @@ x_scaled = scaler.fit_transform(x)
 df_temp = pd.DataFrame(x_scaled, columns=column_names_to_normalize, index = heart.index)
 print(df_temp)
 
+#replacing old values with scaled values
+
 df1=heart.drop(['age','trestbps','chol','thalach','oldpeak'],axis=1)
 
 print(df1.info())
