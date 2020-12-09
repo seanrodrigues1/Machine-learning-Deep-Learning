@@ -1,0 +1,127 @@
+library(caret)
+library(ggplot2)
+#load dataset heart disease
+heart
+str(heart)
+#convert categorical features and outcome variable as factor ,also renaming age coloumn
+heart1=heart %>% mutate (sex=factor(sex),cp=factor(cp),fbs=factor(fbs),restecg=factor(restecg),exang=factor(exang),slope=factor(slope),ca=factor(ca),thal=factor(thal),target=factor(target))
+heart1=heart1 %>% rename(age=ï..age)
+str(heart1)
+#check for missing values
+which(is.na(heart1))
+
+#exploratory data analysis
+
+#outcome variable distribution 
+heart1 %>% group_by(target) %>% summarise(count=length(target))
+
+barplot1=ggplot(heart1,aes(target))+geom_bar()
+
+#feature sex data distribution
+
+heart1 %>% group_by(sex) %>% summarise(count=length(sex))
+
+barplot2=ggplot(heart1,aes(sex,fill=sex))+geom_bar()+xlab("0=female 1=male")
+
+#distribution of target class with respect to sex feeature
+barplot3=ggplot(heart1,aes(sex,fill=target))+geom_bar(position = "dodge")+xlab("0=female 1=male    0=No disease 1=disease")
+
+#age distribution
+summary(heart1$age)
+histage=ggplot(heart1,aes(age,color=age))+geom_histogram(breaks=c(20,30,40,50,60,70,80))+xlab("age groups")
+
+#normalizing your data (0 to 1 scale for better results)
+
+preproc <- preProcess(heart1, method=c("range"))
+
+normdata<- predict(preproc, heart1)
+summary(normdata)
+
+#creating dummy variables for the categorical features with more than 2 classes
+#ie for cp ,thal and slope
+library(dummies)
+heartdata <- dummy.data.frame(normdata, names = c("cp","slope","thal") , sep = ".")
+summary(heartdata)
+
+
+#train & test set split
+
+test_index <- createDataPartition(heartdata$target,times=1,p=0.2,list=FALSE)
+test <- heartdata[test_index,]
+train <- heartdata [-test_index,]
+
+#models
+#logistic regression
+train_logistic=train(target~.,method="glm",data=train)
+y_hat=predict(train_logistic,test)
+confusionMatrix(y_hat,test$target)
+#method 2
+logreg=glm(target~.,data=train,family="binomial")
+summary(logreg)
+y_hat=predict(logreg,test,type="response")
+y_hat1=ifelse(y_hat>0.5,1,0)
+confusionMatrix(factor(y_hat1),test$target)
+
+#knn
+train_knn=train(target~.,method="knn",tuneGrid=data.frame(k=seq(1,20)),data=train,trControl=trainControl(method = "cv",number = 10,p=0.9))
+y_hat=predict(train_knn,test)
+confusionMatrix(y_hat,test$target)
+
+#svm
+train_svm=train(target~.,method="svmPoly",data=train)
+y_hat=predict(train_svm,test)
+confusionMatrix(y_hat,test$target)
+
+train_svmrgb=train(target~.,method="svmRadial",data=train)
+y_hat1=predict(train_svmrgb,test)
+confusionMatrix(y_hat1,test$target)
+
+
+
+train_svmlinear=train(target~.,method="svmLinear",data=train)
+y_hat2=predict(train_svmlinear,test)
+confusionMatrix(y_hat2,test$target)
+
+
+#naive bayes classifier
+
+
+train_nb=train(target~.,method="nb",data=train)
+y_hatt=predict(train_nb,test)
+confusionMatrix(y_hatt,test$target)
+
+
+#decision tree
+
+train_dt=train(target~.,method="rpart",data=train,tuneGrid=data.frame(cp=seq(0.0,0.1,len=25)),trControl=trainControl(method = "cv",number = 10,p=0.9))
+y_hat_dt=predict(train_dt,test)
+confusionMatrix(y_hat_dt,test$target)
+
+plot(train_dt$finalModel,margin = 0.1)
+text(train_dt$finalModel,cex=0.75)
+
+#random forest
+library(randomForest)
+trainrf=train(target~.,method="rf",ntree=20,data=train,tuneGrid=data.frame(mtry=seq(2,10)),trControl=trainControl(method = "cv",number = 10,p=0.9))
+y_hat_rf=predict(trainrf,train)
+confusionMatrix(y_hat_rf,train$target)
+
+#lda & qda
+trainlda=train(target~.,method="lda",data=train)
+y_hat_lda=predict(trainlda,test)
+confusionMatrix(y_hat_lda,test$target)
+
+trainqda=train(target~.,method="qda",data=train)
+y_hat_qda=predict(trainqda,test)
+confusionMatrix(y_hat_qda,test$target)
+
+#qda not working
+
+#adaboost
+library(fastAdaboost)
+trainada=train(target~.,method="adaboost",data=train)
+y_hat_ada=predict(trainada,test)
+confusionMatrix(y_hat_ada,test$target)
+
+
+
